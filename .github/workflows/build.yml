@@ -19,7 +19,7 @@ jobs:
           sudo xcode-select -s /Applications/Xcode_15.2.app/Contents/Developer
           xcodebuild -version
 
-      - name: Prepare Project Structure & Localization
+      - name: Prepare Project Structure & Mock Resources
         shell: bash
         run: |
           set -euo pipefail
@@ -30,16 +30,17 @@ jobs:
             cp project.pbxproj ASTER.xcodeproj/
           fi
 
-          # 2. Ensure expected lproj directories exist to prevent missing file errors
-          mkdir -p ThreeOneOSFive/zh-Hans.lproj ThreeOneOSFive/vi.lproj
-          
-          # If Localizable.strings exists in root or elsewhere, copy them; otherwise create placeholder files
-          if [ -f Localizable.strings ]; then
-            cp Localizable.strings ThreeOneOSFive/zh-Hans.lproj/
-            cp Localizable.strings ThreeOneOSFive/vi.lproj/
-          else
-            [ ! -f ThreeOneOSFive/zh-Hans.lproj/Localizable.strings ] && echo "/* zh-Hans */" > ThreeOneOSFive/zh-Hans.lproj/Localizable.strings
-            [ ! -f ThreeOneOSFive/vi.lproj/Localizable.strings ] && echo "/* vi */" > ThreeOneOSFive/vi.lproj/Localizable.strings
+          # 2. Create the exact directory structure expected by the project file
+          mkdir -p ThreeOneOSFive/en.lproj ThreeOneOSFive/vi.lproj ThreeOneOSFive/zh-Hans.lproj ThreeOneOSFive/Assets.xcassets
+
+          # 3. Create placeholder Localizable.strings if missing
+          [ ! -f ThreeOneOSFive/en.lproj/Localizable.strings ] && echo "/* en */" > ThreeOneOSFive/en.lproj/Localizable.strings
+          [ ! -f ThreeOneOSFive/vi.lproj/Localizable.strings ] && echo "/* vi */" > ThreeOneOSFive/vi.lproj/Localizable.strings
+          [ ! -f ThreeOneOSFive/zh-Hans.lproj/Localizable.strings ] && echo "/* zh-Hans */" > ThreeOneOSFive/zh-Hans.lproj/Localizable.strings
+
+          # 4. Create Contents.json inside Assets.xcassets to satisfy Xcode asset catalog compiler
+          if [ ! -f ThreeOneOSFive/Assets.xcassets/Contents.json ]; then
+            echo '{"info" : {"author" : "xcode", "version" : 1}}' > ThreeOneOSFive/Assets.xcassets/Contents.json
           fi
 
       - name: Build ASTER App
@@ -47,7 +48,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Manually clean output directories to avoid xcodebuild clean conflicts
+          # Manually clean output directories
           rm -rf build Payload ASTER-unsigned.ipa
           mkdir -p build/Products/Release-iphoneos
 
@@ -84,5 +85,6 @@ jobs:
           path: ASTER-unsigned.ipa
           if-no-files-found: error
           retention-days: 14
+
 
 
