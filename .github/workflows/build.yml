@@ -14,32 +14,12 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
-      - name: Select Xcode
-        uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: latest-stable
-
-      - name: Locate Xcode project
-        id: project
-        shell: bash
+      - name: Select Xcode 15.2
         run: |
-          set -euo pipefail
+          sudo xcode-select -s /Applications/Xcode_15.2.app/Contents/Developer
+          xcodebuild -version
 
-          project="$(find . -maxdepth 3 -name '*.xcodeproj' -print -quit)"
-          workspace="$(find . -maxdepth 3 -name '*.xcworkspace' -print -quit)"
-
-          if [[ -n "$workspace" ]]; then
-            echo "build_type=workspace" >> "$GITHUB_OUTPUT"
-            echo "build_path=$workspace" >> "$GITHUB_OUTPUT"
-          elif [[ -n "$project" ]]; then
-            echo "build_type=project" >> "$GITHUB_OUTPUT"
-            echo "build_path=$project" >> "$GITHUB_OUTPUT"
-          else
-            echo "No .xcodeproj or .xcworkspace was found in the repository."
-            exit 1
-          fi
-
-      - name: Build ASTER
+      - name: Build ASTER App
         shell: bash
         run: |
           set -euo pipefail
@@ -47,28 +27,16 @@ jobs:
           rm -rf build Payload ASTER-unsigned.ipa
           mkdir -p build
 
-          common_args=(
-            -configuration Release
-            -sdk iphoneos
-            -derivedDataPath "$PWD/build/DerivedData"
-            CODE_SIGN_IDENTITY=""
-            CODE_SIGNING_REQUIRED=NO
-            CODE_SIGNING_ALLOWED=NO
-          )
-
-          if [[ "${{ steps.project.outputs.build_type }}" == "workspace" ]]; then
-            xcodebuild \
-              -workspace "${{ steps.project.outputs.build_path }}" \
-              -scheme ASTER \
-              "${common_args[@]}" \
-              clean build
-          else
-            xcodebuild \
-              -project "${{ steps.project.outputs.build_path }}" \
-              -scheme ASTER \
-              "${common_args[@]}" \
-              clean build
-          fi
+          # Build directly using the target/project settings since project.pbxproj is at root
+          xcodebuild \
+            -target "3105" \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath "$PWD/build/DerivedData" \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            clean build
 
       - name: Package unsigned IPA
         shell: bash
@@ -92,3 +60,4 @@ jobs:
           path: ASTER-unsigned.ipa
           if-no-files-found: error
           retention-days: 14
+
