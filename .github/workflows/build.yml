@@ -31,16 +31,21 @@ jobs:
           fi
 
           # 2. Create the exact directory structure expected by the project file
-          mkdir -p ThreeOneOSFive/en.lproj ThreeOneOSFive/vi.lproj ThreeOneOSFive/zh-Hans.lproj ThreeOneOSFive/Assets.xcassets
+          mkdir -p ThreeOneOSFive/en.lproj ThreeOneOSFive/vi.lproj ThreeOneOSFive/zh-Hans.lproj ThreeOneOSFive/Assets.xcassets/AppIcon.appiconset
 
           # 3. Create placeholder Localizable.strings if missing
           [ ! -f ThreeOneOSFive/en.lproj/Localizable.strings ] && echo "/* en */" > ThreeOneOSFive/en.lproj/Localizable.strings
           [ ! -f ThreeOneOSFive/vi.lproj/Localizable.strings ] && echo "/* vi */" > ThreeOneOSFive/vi.lproj/Localizable.strings
           [ ! -f ThreeOneOSFive/zh-Hans.lproj/Localizable.strings ] && echo "/* zh-Hans */" > ThreeOneOSFive/zh-Hans.lproj/Localizable.strings
 
-          # 4. Create Contents.json inside Assets.xcassets to satisfy Xcode asset catalog compiler
+          # 4. Create Contents.json for Assets.xcassets
           if [ ! -f ThreeOneOSFive/Assets.xcassets/Contents.json ]; then
             echo '{"info" : {"author" : "xcode", "version" : 1}}' > ThreeOneOSFive/Assets.xcassets/Contents.json
+          fi
+
+          # 5. Create Contents.json for AppIcon.appiconset to satisfy Xcode asset compiler
+          if [ ! -f ThreeOneOSFive/Assets.xcassets/AppIcon.appiconset/Contents.json ]; then
+            echo '{"images" : [], "info" : {"author" : "xcode", "version" : 1}}' > ThreeOneOSFive/Assets.xcassets/AppIcon.appiconset/Contents.json
           fi
 
       - name: Build ASTER App
@@ -82,9 +87,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ASTER-unsigned-ipa
-          path: ASTER-unsigned.ipa
+          path: ASTER-unsigned-ipa
           if-no-files-found: error
           retention-days: 14
+
 
 
 
