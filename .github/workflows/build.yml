@@ -27,7 +27,6 @@ jobs:
           rm -rf build Payload ASTER-unsigned.ipa
           mkdir -p build/Products/Release-iphoneos
 
-          # Build directly using target 3105 and explicit build directory
           xcodebuild \
             -target "3105" \
             -configuration Release \
@@ -57,8 +56,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ASTER-unsigned-ipa
-          path: ASTER-unsigned-ipa
+          path: ASTER-unsigned.ipa
           if-no-files-found: error
           retention-days: 14
-
-
