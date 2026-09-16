@@ -48,9 +48,8 @@ jobs:
             echo '{"images" : [], "info" : {"author" : "xcode", "version" : 1}}' > ThreeOneOSFive/Assets.xcassets/AppIcon.appiconset/Contents.json
           fi
 
-          # 6. Create a basic Info.plist to satisfy Xcode build requirements
-          if [ ! -f ThreeOneOSFive/Info.plist ]; then
-            cat << 'EOF' > ThreeOneOSFive/Info.plist
+          # 6. Create Info.plist strictly inside the ThreeOneOSFive directory as required by project.pbxproj
+          cat << 'EOF' > ThreeOneOSFive/Info.plist
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -88,7 +87,6 @@ jobs:
 </dict>
 </plist>
 EOF
-          fi
 
       - name: Build ASTER App
         shell: bash
@@ -120,6 +118,19 @@ EOF
             echo "The Release build did not produce an .app bundle."
             exit 1
           fi
+
+          mkdir -p Payload
+          cp -R "$app_path" Payload/
+          /usr/bin/ditto -c -k --sequesterRsrc --keepParent Payload ASTER-unsigned.ipa
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: ASTER-unsigned-ipa
+          path: ASTER-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 14
+
 
           mkdir -p Payload
           cp -R "$app_path" Payload/
