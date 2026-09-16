@@ -25,14 +25,14 @@ jobs:
           set -euo pipefail
 
           rm -rf build Payload ASTER-unsigned.ipa
-          mkdir -p build
+          mkdir -p build/Products/Release-iphoneos
 
-          # Build directly using the target/project settings since project.pbxproj is at root
+          # Build directly using target 3105 and explicit build directory
           xcodebuild \
             -target "3105" \
             -configuration Release \
             -sdk iphoneos \
-            -derivedDataPath "$PWD/build/DerivedData" \
+            CONFIGURATION_BUILD_DIR="$PWD/build/Products/Release-iphoneos" \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
@@ -43,7 +43,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          app_path="$(find build/DerivedData/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' -type d -print -quit)"
+          app_path="$(find build/Products/Release-iphoneos -maxdepth 1 -name '*.app' -type d -print -quit)"
           if [[ -z "$app_path" ]]; then
             echo "The Release build did not produce an .app bundle."
             exit 1
@@ -57,7 +57,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ASTER-unsigned-ipa
-          path: ASTER-unsigned.ipa
+          path: ASTER-unsigned-ipa
           if-no-files-found: error
           retention-days: 14
+
 
