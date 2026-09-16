@@ -1,0 +1,94 @@
+name: Build ASTER unsigned IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: macos-14
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Locate Xcode project
+        id: project
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          project="$(find . -maxdepth 3 -name '*.xcodeproj' -print -quit)"
+          workspace="$(find . -maxdepth 3 -name '*.xcworkspace' -print -quit)"
+
+          if [[ -n "$workspace" ]]; then
+            echo "build_type=workspace" >> "$GITHUB_OUTPUT"
+            echo "build_path=$workspace" >> "$GITHUB_OUTPUT"
+          elif [[ -n "$project" ]]; then
+            echo "build_type=project" >> "$GITHUB_OUTPUT"
+            echo "build_path=$project" >> "$GITHUB_OUTPUT"
+          else
+            echo "No .xcodeproj or .xcworkspace was found in the repository."
+            exit 1
+          fi
+
+      - name: Build ASTER
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          rm -rf build Payload ASTER-unsigned.ipa
+          mkdir -p build
+
+          common_args=(
+            -configuration Release
+            -sdk iphoneos
+            -derivedDataPath "$PWD/build/DerivedData"
+            CODE_SIGN_IDENTITY=""
+            CODE_SIGNING_REQUIRED=NO
+            CODE_SIGNING_ALLOWED=NO
+          )
+
+          if [[ "${{ steps.project.outputs.build_type }}" == "workspace" ]]; then
+            xcodebuild \
+              -workspace "${{ steps.project.outputs.build_path }}" \
+              -scheme ASTER \
+              "${common_args[@]}" \
+              clean build
+          else
+            xcodebuild \
+              -project "${{ steps.project.outputs.build_path }}" \
+              -scheme ASTER \
+              "${common_args[@]}" \
+              clean build
+          fi
+
+      - name: Package unsigned IPA
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          app_path="$(find build/DerivedData/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' -type d -print -quit)"
+          if [[ -z "$app_path" ]]; then
+            echo "The Release build did not produce an .app bundle."
+            exit 1
+          fi
+
+          mkdir -p Payload
+          cp -R "$app_path" Payload/
+          /usr/bin/ditto -c -k --sequesterRsrc --keepParent Payload ASTER-unsigned.ipa
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: ASTER-unsigned-ipa
+          path: ASTER-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 14
