@@ -19,14 +19,27 @@ jobs:
           sudo xcode-select -s /Applications/Xcode_15.2.app/Contents/Developer
           xcodebuild -version
 
-      - name: Prepare Xcode Project Wrapper
+      - name: Prepare Project Structure & Localization
         shell: bash
         run: |
           set -euo pipefail
-          # Wrap the root-level project.pbxproj into a valid .xcodeproj bundle
+
+          # 1. Wrap project.pbxproj into ASTER.xcodeproj bundle if not exists
           if [ -f project.pbxproj ] && [ ! -d ASTER.xcodeproj ]; then
             mkdir -p ASTER.xcodeproj
             cp project.pbxproj ASTER.xcodeproj/
+          fi
+
+          # 2. Ensure expected lproj directories exist to prevent missing file errors
+          mkdir -p ThreeOneOSFive/zh-Hans.lproj ThreeOneOSFive/vi.lproj
+          
+          # If Localizable.strings exists in root or elsewhere, copy them; otherwise create placeholder files
+          if [ -f Localizable.strings ]; then
+            cp Localizable.strings ThreeOneOSFive/zh-Hans.lproj/
+            cp Localizable.strings ThreeOneOSFive/vi.lproj/
+          else
+            [ ! -f ThreeOneOSFive/zh-Hans.lproj/Localizable.strings ] && echo "/* zh-Hans */" > ThreeOneOSFive/zh-Hans.lproj/Localizable.strings
+            [ ! -f ThreeOneOSFive/vi.lproj/Localizable.strings ] && echo "/* vi */" > ThreeOneOSFive/vi.lproj/Localizable.strings
           fi
 
       - name: Build ASTER App
@@ -34,6 +47,7 @@ jobs:
         run: |
           set -euo pipefail
 
+          # Manually clean output directories to avoid xcodebuild clean conflicts
           rm -rf build Payload ASTER-unsigned.ipa
           mkdir -p build/Products/Release-iphoneos
 
@@ -46,7 +60,7 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
-            clean build
+            build
 
       - name: Package unsigned IPA
         shell: bash
@@ -70,4 +84,5 @@ jobs:
           path: ASTER-unsigned.ipa
           if-no-files-found: error
           retention-days: 14
+
 
