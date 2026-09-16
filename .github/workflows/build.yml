@@ -19,6 +19,16 @@ jobs:
           sudo xcode-select -s /Applications/Xcode_15.2.app/Contents/Developer
           xcodebuild -version
 
+      - name: Prepare Xcode Project Wrapper
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Wrap the root-level project.pbxproj into a valid .xcodeproj bundle
+          if [ -f project.pbxproj ] && [ ! -d ASTER.xcodeproj ]; then
+            mkdir -p ASTER.xcodeproj
+            cp project.pbxproj ASTER.xcodeproj/
+          fi
+
       - name: Build ASTER App
         shell: bash
         run: |
@@ -28,6 +38,7 @@ jobs:
           mkdir -p build/Products/Release-iphoneos
 
           xcodebuild \
+            -project ASTER.xcodeproj \
             -target "3105" \
             -configuration Release \
             -sdk iphoneos \
@@ -59,3 +70,4 @@ jobs:
           path: ASTER-unsigned.ipa
           if-no-files-found: error
           retention-days: 14
+
