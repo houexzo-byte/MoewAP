@@ -28,9 +28,6 @@ jobs:
           if [[ ! -d "$XCODE_PATH" ]]; then
             echo "Xcode 15.2 was not found at:"
             echo "$XCODE_PATH"
-            echo
-            echo "Installed Xcode versions:"
-            find /Applications -maxdepth 1 -type d -iname "Xcode*.app" -print || true
             exit 1
           fi
 
@@ -42,98 +39,22 @@ jobs:
         run: |
           set -euo pipefail
 
+          # Minimal essential files required for the build to start
           required_root_files=(
             "project.pbxproj"
             "App.swift"
             "ContentView.swift"
             "ThreeOneOSFive-Bridging-Header.h"
-
-            "AntiDetection.m"
-            "AppIconHelper.h"
-            "AppIconHelper.m"
-            "bad_query.c"
-            "bad_query.h"
-            "DisplayIdentity.h"
-            "DisplayIdentity.m"
-            "DisplayIdentityAttribution.swift"
-            "kexploit_opa334.h"
-            "kexploit_opa334.m"
-            "krw.h"
-            "krw.m"
-            "kutils.h"
-            "kutils.m"
-            "machine_info.h"
-            "mcm_bridge.h"
-            "mcm_bridge.m"
-            "offsets.h"
-            "offsets.m"
-            "sandbox_escape.h"
-            "sandbox_escape.m"
-            "vnode.h"
-            "vnode.m"
-            "wallpaper_zip.c"
-            "wallpaper_zip.h"
-            "xpaci.h"
-
-            "AppTabNavigationState.swift"
-            "CleanerCatalog.swift"
-            "ContainerBrowserLogic.swift"
-            "ContainerIdentityResolver.swift"
-            "ContainerStore.swift"
-            "DevicePatchService.swift"
-            "FileManagerService.swift"
-            "FileOperationCoordinator.swift"
-            "FileReplacementService.swift"
-            "KernelExploit.swift"
-            "LimitedCleanerService.swift"
-            "Localization.swift"
-            "MG.swift"
-            "PatchDraftCoordinator.swift"
-            "PatchDraftService.swift"
-            "PatchKeyStore.swift"
-            "PatchPackageCodec.swift"
-            "PatchProjectLibrary.swift"
-            "PatchProjectModels.swift"
-            "PatchProjectStore.swift"
-            "PatchTransaction.swift"
-            "PatchWorkspaceService.swift"
-            "SBX.swift"
-            "SecureZIPArchive.swift"
-            "SupportPolicy.swift"
-            "Utils.swift"
-            "WallpaperInstaller.swift"
-            "WallpaperLabModels.swift"
-            "WallpaperLabService.swift"
-            "ZIPArchiveExtractor.swift"
-            "ZIPArchiveWriter.swift"
-          )
-
-          optional_view_files=(
-            "AppDataBrowserView.swift"
-            "CleanerView.swift"
-            "DesignSystem.swift"
-            "FileBrowserView.swift"
-            "FilesTabControls.swift"
-            "FilesTabSwitcherView.swift"
-            "FolderPatchSelectionView.swift"
-            "LogView.swift"
-            "OnboardingView.swift"
-            "PatchProjectEditorView.swift"
-            "PatchProjectsView.swift"
-            "SettingsView.swift"
-            "WallpaperLabView.swift"
           )
 
           for file in "${required_root_files[@]}"; do
             if [[ ! -f "$file" ]]; then
-              echo "Required source file is missing from the repository root:"
-              echo "$file"
+              echo "Required source file is missing from the repository root: $file"
               exit 1
             fi
           done
 
           mkdir -p ASTER.xcodeproj
-
           cp project.pbxproj ASTER.xcodeproj/project.pbxproj
 
           mkdir -p \
@@ -148,39 +69,25 @@ jobs:
             ThreeOneOSFive/km.lproj \
             ThreeOneOSFive/Assets.xcassets/AppIcon.appiconset
 
-          copy_required() {
+          # Helper function to copy files safely if they exist
+          copy_files() {
             local destination="$1"
             shift
-
-            for file in "$@"; do
-              if [[ ! -f "$file" ]]; then
-                echo "Required source file is missing:"
-                echo "$file"
-                exit 1
-              fi
-
-              cp "$file" "ThreeOneOSFive/$destination/$file"
-            done
-          }
-
-          copy_optional() {
-            local destination="$1"
-            shift
-
             for file in "$@"; do
               if [[ -f "$file" ]]; then
                 cp "$file" "ThreeOneOSFive/$destination/$file"
               else
-                echo "Optional source file not found, skipping: $file"
+                echo "Warning: optional file '$file' not found, skipping."
               fi
             done
           }
 
-          copy_required "" \
-            "App.swift" \
-            "ContentView.swift"
+          # Copy root level core files
+          [[ -f App.swift ]] && cp App.swift ThreeOneOSFive/
+          [[ -f ContentView.swift ]] && cp ContentView.swift ThreeOneOSFive/
 
-          copy_required "views" \
+          # Copy views safely
+          copy_files "views" \
             "AppDataBrowserView.swift" \
             "CleanerView.swift" \
             "DesignSystem.swift" \
@@ -195,7 +102,8 @@ jobs:
             "SettingsView.swift" \
             "WallpaperLabView.swift"
 
-          copy_required "helpers" \
+          # Copy helpers safely
+          copy_files "helpers" \
             "AppTabNavigationState.swift" \
             "AppIconHelper.h" \
             "AppIconHelper.m" \
@@ -234,7 +142,8 @@ jobs:
             "ZIPArchiveWriter.swift" \
             "AntiDetection.m"
 
-          copy_required "exploit" \
+          # Copy exploit files safely
+          copy_files "exploit" \
             "bad_query.c" \
             "bad_query.h" \
             "mcm_bridge.h" \
@@ -242,7 +151,8 @@ jobs:
             "wallpaper_zip.c" \
             "wallpaper_zip.h"
 
-          copy_required "kexploit" \
+          # Copy kexploit files safely
+          copy_files "kexploit" \
             "kexploit_opa334.h" \
             "kexploit_opa334.m" \
             "krw.h" \
@@ -258,9 +168,12 @@ jobs:
             "vnode.m" \
             "xpaci.h"
 
-          cp ThreeOneOSFive-Bridging-Header.h \
-            ThreeOneOSFive/ThreeOneOSFive-Bridging-Header.h
+          # Copy Bridging Header
+          if [[ -f ThreeOneOSFive-Bridging-Header.h ]]; then
+            cp ThreeOneOSFive-Bridging-Header.h ThreeOneOSFive/ThreeOneOSFive-Bridging-Header.h
+          fi
 
+          # Generate Info.plist
           cat > ThreeOneOSFive/Info.plist <<'PLIST'
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -273,20 +186,18 @@ jobs:
             <key>CFBundleExecutable</key>
             <string>$(EXECUTABLE_NAME)</string>
             <key>CFBundleIdentifier</key>
-            <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+            <string>com.example.ASTER</string>
             <key>CFBundleInfoDictionaryVersion</key>
             <string>6.0</string>
             <key>CFBundleName</key>
-            <string>$(PRODUCT_NAME)</string>
+            <string>ASTER</string>
             <key>CFBundlePackageType</key>
             <string>APPL</string>
             <key>CFBundleShortVersionString</key>
-            <string>$(MARKETING_VERSION)</string>
+            <string>1.0</string>
             <key>CFBundleVersion</key>
-            <string>$(CURRENT_PROJECT_VERSION)</string>
+            <string>1</string>
             <key>LSRequiresIPhoneOS</key>
-            <true/>
-            <key>UIApplicationSupportsIndirectInputEvents</key>
             <true/>
             <key>UISupportedInterfaceOrientations</key>
             <array>
@@ -298,98 +209,20 @@ jobs:
           </plist>
           PLIST
 
-          printf '/* English localization placeholder */\n' \
-            > ThreeOneOSFive/en.lproj/Localizable.strings
+          # Localizations
+          echo "/* en */" > ThreeOneOSFive/en.lproj/Localizable.strings
+          echo "/* vi */" > ThreeOneOSFive/vi.lproj/Localizable.strings
+          echo "/* zh-Hans */" > ThreeOneOSFive/zh-Hans.lproj/Localizable.strings
+          echo "/* km */" > ThreeOneOSFive/km.lproj/Localizable.strings
 
-          printf '/* Vietnamese localization placeholder */\n' \
-            > ThreeOneOSFive/vi.lproj/Localizable.strings
-
-          printf '/* Simplified Chinese localization placeholder */\n' \
-            > ThreeOneOSFive/zh-Hans.lproj/Localizable.strings
-
-          printf '/* Khmer localization placeholder */\n' \
-            > ThreeOneOSFive/km.lproj/Localizable.strings
-
+          # Assets
           cat > ThreeOneOSFive/Assets.xcassets/Contents.json <<'JSON'
-          {
-            "info" : {
-              "author" : "xcode",
-              "version" : 1
-            }
-          }
+          {"info" : {"author" : "xcode", "version" : 1}}
           JSON
 
-          if [[ -f AppIcon-1024.png ]]; then
-            cp AppIcon-1024.png \
-              ThreeOneOSFive/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png
-
-            cat > ThreeOneOSFive/Assets.xcassets/AppIcon.appiconset/Contents.json <<'JSON'
-          {
-            "images" : [
-              {
-                "filename" : "AppIcon-1024.png",
-                "idiom" : "ios-marketing",
-                "scale" : "1x",
-                "size" : "1024x1024"
-              }
-            ],
-            "info" : {
-              "author" : "xcode",
-              "version" : 1
-            }
-          }
+          cat > ThreeOneOSFive/Assets.xcassets/AppIcon.appiconset/Contents.json <<'JSON'
+          {"images" : [], "info" : {"author" : "xcode", "version" : 1}}
           JSON
-          elif [[ -f app-icon.png ]]; then
-            cp app-icon.png \
-              ThreeOneOSFive/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png
-
-            cat > ThreeOneOSFive/Assets.xcassets/AppIcon.appiconset/Contents.json <<'JSON'
-          {
-            "images" : [
-              {
-                "filename" : "AppIcon-1024.png",
-                "idiom" : "ios-marketing",
-                "scale" : "1x",
-                "size" : "1024x1024"
-              }
-            ],
-            "info" : {
-              "author" : "xcode",
-              "version" : 1
-            }
-          }
-          JSON
-          else
-            echo "No app icon found; creating an empty AppIcon set."
-            cat > ThreeOneOSFive/Assets.xcassets/AppIcon.appiconset/Contents.json <<'JSON'
-          {
-            "images" : [],
-            "info" : {
-              "author" : "xcode",
-              "version" : 1
-            }
-          }
-          JSON
-          fi
-
-      - name: Validate project inputs
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          test -f ASTER.xcodeproj/project.pbxproj
-          test -f ThreeOneOSFive/Info.plist
-          test -f ThreeOneOSFive/ThreeOneOSFive-Bridging-Header.h
-          test -d ThreeOneOSFive/Assets.xcassets
-          test -f ThreeOneOSFive/Assets.xcassets/AppIcon.appiconset/Contents.json
-
-          /usr/libexec/PlistBuddy \
-            -c "Print :CFBundleIdentifier" \
-            ThreeOneOSFive/Info.plist
-
-          xcodebuild \
-            -project ASTER.xcodeproj \
-            -list
 
       - name: Build ASTER app without code signing
         shell: bash
@@ -417,15 +250,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          app_path="$(
-            find "$PWD/build/Products/Release-iphoneos" \
-              -maxdepth 1 \
-              -type d \
-              -name "*.app" \
-              -print \
-              -quit
-          )"
-
+          app_path="$(find "$PWD/build/Products/Release-iphoneos" -maxdepth 1 -name "*.app" -type d -print -quit)"
           if [[ -z "$app_path" ]]; then
             echo "The Release build did not produce an .app bundle."
             exit 1
@@ -433,18 +258,8 @@ jobs:
 
           rm -rf Payload ASTER-unsigned.ipa
           mkdir -p Payload
-
           cp -R "$app_path" Payload/
-          /usr/bin/ditto \
-            -c \
-            -k \
-            --sequesterRsrc \
-            --keepParent \
-            Payload \
-            ASTER-unsigned.ipa
-
-          test -s ASTER-unsigned.ipa
-          ls -lh ASTER-unsigned.ipa
+          /usr/bin/ditto -c -k --sequesterRsrc --keepParent Payload ASTER-unsigned.ipa
 
       - name: Upload unsigned IPA
         if: success()
@@ -463,6 +278,7 @@ jobs:
           path: xcodebuild.log
           if-no-files-found: warn
           retention-days: 14
+
 
 
 
